@@ -235,6 +235,10 @@ class MinesweeperAI:
             # 5) add any new sentences to the AI's knowledge base
             # if they can be inferred from existing knowledge
             kb_updated = self._inference(kb_updated)
+            # Suggestion - you can add the _update_safe_and_mines inside the _inference function
+            # - another idea is making it recursive
+            # so you don't need to keep the kb_updated variable here
+    
 
     def _add_new_sentence(self, cell: tuple, count: int) -> None:
         """
