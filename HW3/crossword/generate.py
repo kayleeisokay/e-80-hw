@@ -93,8 +93,6 @@ class CrosswordCreator:
         """
         Enforce node and arc consistency, and then solve the CSP.
         """
-        # print (self.crossword.variables)
-        # print (self.crossword.variables == {Variable(0, 1, 'down', 5), Variable(0, 1, 'across', 3), Variable(1, 4, 'down', 4), Variable(4, 1, 'across', 4)})
         self.enforce_node_consistency()
         self.ac3()
         return self.backtrack(dict())
@@ -105,10 +103,9 @@ class CrosswordCreator:
         (Remove any values that are inconsistent with a variable's unary
          constraints; in this case, the length of the word.)
         """
-
         for var, words in self.domains.items():
-            var_len = var.length
-            self.domains[var] = {w for w in words if len(w) == var_len}
+            # Remove words that do not match length
+            self.domains[var] = {w for w in words if len(w) == var.length}
 
     def revise(self, x, y):
         """
@@ -121,10 +118,13 @@ class CrosswordCreator:
         """
         revised = False
         first_index, second_index = self.crossword.overlaps[x, y]
+        # Collect words to remove from a variable
         to_remove = set()
 
+        # Checks if an overlap is possible
         for word_x in self.domains[x]:
             has_match = False
+            # Check if neighbor has a existing overlap
             for word_y in self.domains[y]:
                 if word_x[first_index] == word_y[second_index]:
                     has_match = True
@@ -132,6 +132,7 @@ class CrosswordCreator:
             if not has_match:
                 to_remove.add(word_x)
                 revised = True
+        # Remove words that do not have overlap
         self.domains[x] = self.domains[x] - to_remove
 
         return revised
@@ -145,13 +146,16 @@ class CrosswordCreator:
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
+        # Initialize arcs
 
+        # If arcs are not passed in
         if arcs is None:
             arcs = [
                 (x, y)
                 for x in self.crossword.variables
                 for y in self.crossword.neighbors(x)
             ]
+        # If arcs are passed in
         else:
             arcs = arcs.copy()
 
@@ -173,8 +177,7 @@ class CrosswordCreator:
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        assigned_variables = set(assignment.keys())
-        return assigned_variables == self.crossword.variables
+        return set(assignment.keys()) == self.crossword.variables
 
     def consistent(self, assignment):
         """
@@ -191,9 +194,7 @@ class CrosswordCreator:
         for var, word in assignment.items():
             if len(word) != var.length:
                 return False
-
-        # no conflicts between neighboring variables
-        for var, word in assignment.items():
+            # no conflicts between neighboring variables
             for neighbor in self.crossword.neighbors(var):
                 if neighbor in assignment:
                     i, j = self.crossword.overlaps[var, neighbor]
