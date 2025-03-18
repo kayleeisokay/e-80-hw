@@ -104,7 +104,7 @@ class CrosswordCreator:
          constraints; in this case, the length of the word.)
         """
         for var, words in self.domains.items():
-            # Remove words that do not match length
+            # Remove words in domain that do not match variable length
             self.domains[var] = {w for w in words if len(w) == var.length}
 
     def revise(self, x, y):
@@ -124,7 +124,7 @@ class CrosswordCreator:
         # Checks if an overlap is possible
         for word_x in self.domains[x]:
             has_match = False
-            # Check if neighbor has a existing overlap
+            # Check if neighbor has an existing overlap
             for word_y in self.domains[y]:
                 if word_x[first_index] == word_y[second_index]:
                     has_match = True
@@ -148,19 +148,20 @@ class CrosswordCreator:
         """
         # Initialize arcs
 
-        # If arcs are not passed in
+        # If arcs are not passed in, create list of all arcs
         if arcs is None:
             arcs = [
                 (x, y)
                 for x in self.crossword.variables
                 for y in self.crossword.neighbors(x)
             ]
-        # If arcs are passed in
+        # If arcs are passed in, use them
         else:
             arcs = arcs.copy()
 
+        # Borrowed from lecture pseudocode
         while arcs:
-            # dequeue
+            # Dequeue
             x, y = arcs.pop(0)
             # if Revise(csp, X, Y):
             if self.revise(x, y):
@@ -177,6 +178,7 @@ class CrosswordCreator:
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
+        # If sets contain the same elements, they are equal
         return set(assignment.keys()) == self.crossword.variables
 
     def consistent(self, assignment):
@@ -185,16 +187,15 @@ class CrosswordCreator:
         puzzle without conflicting characters); return False otherwise.
         """
 
-        # all values are distinct
-        words = list(assignment.values())
-        if len(words) != len(set(words)):
+        # Check all values are distinct
+        if len(assignment.values()) != len(set(assignment.values())):
             return False
 
-        # every value is the correct length
+        # Check every value is the correct length
         for var, word in assignment.items():
             if len(word) != var.length:
                 return False
-            # no conflicts between neighboring variables
+            # Check no conflicts between neighboring variables
             for neighbor in self.crossword.neighbors(var):
                 if neighbor in assignment:
                     i, j = self.crossword.overlaps[var, neighbor]
@@ -213,21 +214,26 @@ class CrosswordCreator:
 
         # Helper function to count number of conflicts
         # Easier to have it here than to break it out to a
-        # separate private function
+        # separate private function, because it ended up needing
+        # too many arguments
         def count_conflicts(word):
             conflicts = 0
 
             # Get unassigned neightbors
             assigned = set(assignment.keys())
-            neighbors = set(self.crossword.neighbors(var))
+            neighbors = self.crossword.neighbors(var)
             unassigned_neighbors = neighbors - assigned
 
             # Loop over neighbors and count conflicts
-            for neighbor in unassigned_neighbors:
-                w_index, n_index = self.crossword.overlaps[var, neighbor]
-                for neighbor_word in self.domains[neighbor]:
-                    if word[w_index] != neighbor_word[n_index]:
-                        conflicts += 1
+            conflicts = sum(
+                # Boolean
+                word[w_index] != neighbor_word[n_index]
+                for neighbor in unassigned_neighbors
+                # Loop over overlaps
+                for w_index, n_index in [self.crossword.overlaps[var, neighbor]]
+                # Loop over words in neighbors
+                for neighbor_word in self.domains[neighbor]
+            )
             return conflicts
 
         # Sort the domain of the variable by conflicts
@@ -241,10 +247,9 @@ class CrosswordCreator:
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        # Get unassigned variables
         vars = self.crossword.variables
         assigned = assignment.keys()
-        unassigned = list(set(vars) - set(assigned))
+        unassigned = list(vars - set(assigned))
 
         # Sort the unassigned variables by remaining values
         return sorted(unassigned, key=lambda var: len(self.domains[var]))[0]
@@ -262,20 +267,19 @@ class CrosswordCreator:
         if self.assignment_complete(assignment):
             return assignment
 
-        # Taken from lecture pseudocode, thank god for the pseudocode
+        # Taken from lecture pseudocode, thank you for the pseudocode!
         var = self.select_unassigned_variable(assignment)
         for value in self.order_domain_values(var, assignment):
-            new_assignment = assignment.copy()
-            new_assignment[var] = value
+            assignment[var] = value
             # Pass in arcs to inference
             inferences = self.ac3(
                 [(neighbor, var) for neighbor in self.crossword.neighbors(var)]
             )
-            if self.consistent(new_assignment) and inferences:
-                result = self.backtrack(new_assignment)
+            if self.consistent(assignment) and inferences:
+                result = self.backtrack(assignment)
                 if result:
                     return result
-                new_assignment.pop(var, None)
+                assignment.pop(var, None)
         # no assignment is possible
         return None
 
